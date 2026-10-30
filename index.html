@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forca Riso</title>
+<meta name="color-scheme" content="light dark">
+<script>/* aplica o tema antes do primeiro paint para não piscar */try{var t=localStorage.getItem("forca-tema");if(t!=="dark"&&t!=="light")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="ghost" aria-hidden="true">A</div>
+
+<div class="app" id="app" data-screen="menu" data-mode="solo">
+  <header>
+    <div class="logo">
+      <h1 class="mis" aria-label="Forca"><span style="--i:0">F</span><span style="--i:1">O</span><span style="--i:2">R</span><span style="--i:3">C</span><span style="--i:4">A</span></h1>
+      <p>Adivinhe a palavra antes que o boneco fique completo.</p>
+    </div>
+    <div class="hud">
+      <dl class="scores" id="scoresDl" aria-label="Placar do nível atual">
+        <div class="score"><dt>Vitórias</dt><dd id="sWins">0</dd></div>
+        <div class="score hot"><dt>Sequência</dt><dd id="sStreak">0</dd></div>
+        <div class="score"><dt>Recorde</dt><dd id="sBest">0</dd></div>
+      </dl>
+      <ol class="pboard" id="pboard" aria-label="Placar dos jogadores nesta sessão"></ol>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Modo escuro" aria-pressed="false" title="Alternar modo escuro">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <g class="ico-sun"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></g>
+          <path class="ico-moon" d="M20 14.6A8.2 8.2 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="levels" id="levels" role="group" aria-label="Nível de dificuldade"><span class="lvl-ind" id="lvlInd"></span></div>
+    <nav class="cats" id="cats" aria-label="Categorias"></nav>
+  </div>
+  <p class="lvl-rules" id="lvlRules"></p>
+
+  <section class="screen menu" id="menu" aria-labelledby="menuTitle">
+    <p class="eyebrow">Escolha o modo</p>
+    <h2 class="screen-title mis" id="menuTitle" tabindex="-1">Como vai jogar?</h2>
+    <div class="modes">
+      <button class="mode" id="modeSolo" type="button" style="--i:0">
+        <span class="mode-n" aria-hidden="true">01</span>
+        <span class="mode-name">Sozinho</span>
+        <span class="mode-desc">Palavras do banco do jogo, com categoria e nível.</span>
+        <span class="mode-go" aria-hidden="true">→</span>
+      </button>
+      <button class="mode duo" id="modeDuo" type="button" style="--i:1">
+        <span class="mode-n" aria-hidden="true">02</span>
+        <span class="mode-name">Com mais alguém</span>
+        <span class="mode-desc">De 2 a 4 pessoas no mesmo aparelho. Cada um escolhe uma palavra para o próximo adivinhar.</span>
+        <span class="mode-go" aria-hidden="true">→</span>
+      </button>
+    </div>
+    <p class="menu-note" id="menuNote"></p>
+  </section>
+
+  <section class="screen setup players" id="players" aria-labelledby="playersTitle">
+    <form id="playersForm" class="setup-form" novalidate autocomplete="off">
+      <p class="eyebrow">Com mais alguém · <span id="pCount">2 de 4 jogadores</span></p>
+      <h2 class="screen-title mis" id="playersTitle">Quem vai jogar?</h2>
+      <p class="setup-lead">Nomes são opcionais: em branco vira “Jogador 1”, “Jogador 2”… Cada rodada, um escolhe a palavra e o seguinte adivinha.</p>
+      <ol class="plist" id="plist"></ol>
+      <button class="btn alt add-player" id="addPlayer" type="button">+ Adicionar jogador</button>
+      <p class="rotation" id="rotation" aria-label="Ordem do rodízio"></p>
+      <div class="setup-actions">
+        <button class="btn" type="submit">Continuar <span aria-hidden="true">↵</span></button>
+        <button class="btn alt" id="playersBack" type="button">Voltar ao menu</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="screen setup" id="setup" aria-labelledby="setupTitle">
+    <form id="setupForm" class="setup-form" novalidate autocomplete="off">
+      <p class="eyebrow" id="setupKicker">Com mais alguém · rodada 1</p>
+      <h2 class="screen-title mis" id="setupTitle">Palavra secreta</h2>
+      <p class="setup-lead who" id="setupLead">Quem escolhe digita a palavra. Quem vai adivinhar, vire o rosto um instante.</p>
+
+      <div class="field">
+        <label for="secret">Palavra secreta</label>
+        <div class="secret-wrap">
+          <input id="secret" name="secret" type="password" maxlength="30" autocomplete="off" spellcheck="false" autocapitalize="characters" data-lpignore="true" data-1p-ignore aria-describedby="secretHelp secretErr" aria-required="true">
+          <button class="peek" id="peek" type="button" aria-controls="secret" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span class="peek-txt">Mostrar</span>
+          </button>
+        </div>
+        <p class="field-help" id="secretHelp">Letras (acentos e Ç valem), espaço e hífen. De 3 a 20 letras.</p>
+        <p class="field-err" id="secretErr" aria-live="assertive"></p>
+      </div>
+
+      <div class="field">
+        <label for="clueIn">Pista <span class="opt">(opcional)</span></label>
+        <input id="clueIn" name="clue" type="text" maxlength="60" autocomplete="off" aria-describedby="clueHelp clueErr">
+        <p class="field-help" id="clueHelp">Aparece na 1ª dica. Sem pista, as dicas revelam letras.</p>
+        <p class="field-err" id="clueErr" aria-live="assertive"></p>
+      </div>
+
+      <fieldset class="field seg-field">
+        <legend>Dificuldade</legend>
+        <div class="seg" id="seg"></div>
+      </fieldset>
+
+      <div class="setup-actions">
+        <button class="btn" type="submit">Começar <span aria-hidden="true">↵</span></button>
+        <button class="btn alt" id="setupPlayers" type="button">Mudar jogadores</button>
+        <button class="btn alt" id="setupBack" type="button">Voltar ao menu</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="screen pass" id="pass" aria-labelledby="passTitle">
+    <div class="pass-inner">
+      <p class="eyebrow">Palavra guardada</p>
+      <h2 class="screen-title mis" id="passTitle">Passe o aparelho</h2>
+      <p class="setup-lead" id="passLead"></p>
+      <div class="setup-actions">
+        <button class="btn" id="readyBtn" type="button">Estou pronto <span aria-hidden="true">↵</span></button>
+        <button class="btn alt" id="redoBtn" type="button">Escolher outra palavra</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen final" id="final" aria-labelledby="finalTitle">
+    <div class="final-inner">
+      <p class="eyebrow" id="finalKicker">Fim de jogo</p>
+      <h2 class="screen-title mis" id="finalTitle" tabindex="-1">Resultado</h2>
+      <div class="table-wrap" role="region" aria-labelledby="capScore" tabindex="0">
+        <table class="ftable score-table">
+          <caption id="capScore">Placar final da sessão</caption>
+          <thead><tr>
+            <th scope="col"><abbr title="Posição">#</abbr></th>
+            <th scope="col">Jogador</th>
+            <th scope="col">Pontos</th>
+            <th scope="col">Acertos <small>adivinhando</small></th>
+            <th scope="col">Enforcou <small>escolhendo</small></th>
+            <th scope="col">Rodadas</th>
+          </tr></thead>
+          <tbody id="finalRows"></tbody>
+        </table>
+      </div>
+      <div class="table-wrap" role="region" aria-labelledby="capHist" tabindex="0">
+        <table class="ftable hist-table">
+          <caption id="capHist">Histórico das rodadas</caption>
+          <thead><tr>
+            <th scope="col"><abbr title="Rodada">#</abbr></th>
+            <th scope="col">Escolheu</th>
+            <th scope="col">Adivinhou</th>
+            <th scope="col">Palavra</th>
+            <th scope="col">Resultado</th>
+          </tr></thead>
+          <tbody id="histRows"></tbody>
+        </table>
+      </div>
+      <div class="setup-actions">
+        <button class="btn" id="finalContinue" type="button">Continuar <span aria-hidden="true">↵</span></button>
+        <button class="btn alt" id="finalNew" type="button">Novo jogo</button>
+      </div>
+    </div>
+  </section>
+
+  <main id="board">
+    <section class="stagecard" aria-label="Forca">
+      <span class="tag" id="stageTag">Nenhum erro</span>
+      <svg id="gallows" viewBox="0 0 300 360" role="img" aria-labelledby="svgTitle">
+        <title id="svgTitle">Desenho da forca</title>
+        <g class="frame" id="frame"></g>
+        <g id="swing">
+          <g id="rope"></g>
+          <g id="body">
+            <g id="parts"></g>
+            <g id="face">
+              <g id="eyes"><circle id="eyeL" cx="190" cy="97" r="3.4"/><circle id="eyeR" cx="210" cy="97" r="3.4"/></g>
+              <path id="xeyes" d="M185.5 92.5l9 9M194.5 92.5l-9 9M205.5 92.5l9 9M214.5 92.5l-9 9"/>
+              <path id="mouth" d="M190 112 Q200 118 210 112"/>
+              <path id="sweat" d="M234 84 q5 8 0 12 q-5 -4 0 -12z"/>
+            </g>
+          </g>
+        </g>
+        <text class="snip" id="snip" x="212" y="52">snip!</text>
+      </svg>
+      <div class="lives">
+        <p>Tentativas<b id="livesNum">6</b></p>
+        <div class="knots" id="knots" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section class="play">
+      <div class="meta">
+        <div>
+          <p class="eyebrow" id="catLabel">Categoria</p>
+          <p class="cat mis" id="catName" tabindex="-1">Frutas</p>
+        </div>
+        <p class="round">Rodada <b id="round">1</b><br><span id="lvlName">Médio</span></p>
+      </div>
+
+      <div class="clue" id="clue" aria-live="polite">
+        <span class="eyebrow">Pista</span>
+        <p id="clueText">Use “Dar dica” para ver uma pista sobre a palavra.</p>
+      </div>
+
+      <div class="word" id="word" role="img" aria-label="Palavra"></div>
+
+      <div class="misses">
+        <p class="eyebrow">Letras erradas</p>
+        <div id="missList"></div>
+      </div>
+
+      <div class="kb" id="kb" aria-label="Teclado"></div>
+
+      <div class="actions">
+        <button class="btn alt" id="hintBtn" type="button"><span>Dar dica</span><span class="pips" id="pips" aria-hidden="true"></span><small id="hintNote"></small></button>
+        <button class="btn" id="newBtn" type="button">Nova palavra</button>
+        <button class="btn alt" id="menuBtn" type="button">Menu</button>
+        <p class="help">Use o teclado físico. Acentos e Ç entram sozinhos: digite <kbd>A</kbd> para Á, Ã ou Â. <kbd>?</kbd> pede dica e <kbd>Enter</kbd> abre a próxima rodada.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="result" role="dialog" aria-modal="true" aria-labelledby="resTitle" data-outcome="won">
+  <div class="res-inner">
+    <p class="res-kicker" id="resKicker" style="--i:0">Categoria</p>
+    <h2 class="stamp" id="resTitle">Salvou!</h2>
+    <p class="res-word" id="resWord" style="--i:1">A palavra era <strong>—</strong></p>
+    <ol class="pboard rboard" id="rboard" style="--i:2" aria-label="Placar dos jogadores"></ol>
+    <dl class="res-stats" style="--i:2">
+      <div><dt>Vitórias</dt><dd id="rWins">0</dd></div>
+      <div><dt>Derrotas</dt><dd id="rLosses">0</dd></div>
+      <div><dt>Sequência</dt><dd id="rStreak">0</dd></div>
+      <div><dt>Recorde</dt><dd id="rBest">0</dd></div>
+    </dl>
+    <p class="res-swap" id="resSwap" style="--i:3" hidden>Troquem de papel: quem adivinhou escolhe a próxima.</p>
+    <div class="res-actions" style="--i:4">
+      <button class="btn" id="again" type="button">Próxima palavra ↵</button>
+      <button class="btn res-menu" id="resMenu" type="button">Voltar ao menu</button>
+      <button class="btn res-menu" id="endBtn" type="button" hidden>Terminar</button>
+    </div>
+  </div>
+</div>
+
+<div id="fx" aria-hidden="true"></div>
+<p class="sr" id="sr" aria-live="polite"></p>
+
+<script src="script.js"></script>
+<script src="theme.js"></script>
+</body>
+</html>
